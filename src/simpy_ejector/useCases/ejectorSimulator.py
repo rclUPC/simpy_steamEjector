@@ -21,7 +21,7 @@ logging.basicConfig(stream = sys.stdout, level = logging.INFO)
 
 #sys.path.append("C:/Users/BuruzsA/PycharmProjects/")
 #sys.path.append("C:/Users/BuruzsA/PycharmProjects/flows1d") ## this is not needed, if the package is installed in jupyter
-from simpy_ejector import nozzleFactory, NozzleParams, nozzleSolver, EjectorGeom, refProp, EjectorMixer
+from simpy_ejector import nozzleFactory, NozzleParams, nozzleSolver, EjectorGeom, fluidProp, EjectorMixer
 
 
 import numpy as np
@@ -63,13 +63,13 @@ class ejectorSimu:
         """
         self.params = params
         self.fluid =  fluid
-        self.RP = refProp.setup(self.fluid)
+        self.FP = fluidProp.setup(self.fluid)
         self.makeEjectorGeom(params)
         if not 'hprim' in params.keys():
-            Dprim, hp = refProp.getDh_from_TP(self.RP, params['Tprim'], params['Pprim'])
+            Dprim, hp = fluidProp.getDh_from_TP(self.FP, params['Tprim'], params['Pprim'])
             params['hprim'] = hp
         if not 'hsuc' in params.keys():
-            Dsuc, hs = refProp.getDh_from_TP(self.RP, params['Tsuc'], params['Psuc'])
+            Dsuc, hs = fluidProp.getDh_from_TP(self.FP, params['Tsuc'], params['Psuc'])
             params['hsuc'] = hs
         self.dv_kick = 2.0
 
@@ -105,7 +105,7 @@ class ejectorSimu:
         # ejectorPlot = ejector.draw()
         self.ejector = ejector
         ### set up the nozzle solver:
-        [Din, hin] = refProp.getDh_from_TP(self.RP, self.params['Tprim'], self.params['Pprim'])
+        [Din, hin] = fluidProp.getDh_from_TP(self.FP, self.params['Tprim'], self.params['Pprim'])
         self.nsolver = nozzleSolver.NozzleSolver(nozzle, self.fluid, 1, solver="AdamAdaptive", mode="basic")
         self.nsolver.setFriction(1e-2)
 

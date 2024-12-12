@@ -27,7 +27,7 @@ import time
 import scipy.optimize
 import scipy.integrate
 from simpy_ejector.flowSolver import FlowSolver
-from simpy_ejector import NozzleParams, numSolvers, refProp
+from simpy_ejector import NozzleParams, numSolvers, fluidProp
 import logging
 
 pd.set_option('display.expand_frame_repr', False)
@@ -80,8 +80,8 @@ class NozzleSolver(FlowSolver):
         :return: [dv/dx, dp/dx, dh/dx] 3 dim numpy array
         '''
         [v, p, h] = vph
-        c = refProp.getSpeedSound(self.RP, h, p)
-        D = refProp.getTD(self.RP, h, p)['D']
+        c = fluidProp.getSpeedSound(self.RP, h, p)
+        D = fluidProp.getTD(self.RP, h, p)['D']
         eps = 0.0001
         nozzle = self.nozzle
         dAdx = nozzle.dAdxNum(x)
@@ -104,8 +104,8 @@ class NozzleSolver(FlowSolver):
         :return: [dv/dx, dp/dx, dh/dx, dw/dx] 3 dim numpy array
         '''
         [v, p, h, w] = vphw
-        c = refProp.getSpeedSound(self.RP, h, p)
-        rpqs = refProp.getTD(self.RP, h, p)
+        c = fluidProp.getSpeedSound(self.RP, h, p)
+        rpqs = fluidProp.getTD(self.RP, h, p)
         D = rpqs['D']
         T = rpqs['T']
         eps = 0.0001
@@ -122,7 +122,7 @@ class NozzleSolver(FlowSolver):
         mu, k = refProp.getTransport(self.RP, T, D)  # mu is microPa*sec
         dh = 0.001
         print("x : {}".format(x))
-        dTdh = (refProp.getTD(self.RP, h + dh, p)['T'] - T) / dh
+        dTdh = (fluidProp.getTD(self.RP, h + dh, p)['T'] - T) / dh
         print("dTdh : {}".format(dTdh))
         alpha = 3.0 / 4.0 * mu / D * 1.0e-6 * 100.0  # mu in mPa alpha/beta should be m/s
         beta = k * dTdh / D / v * 1.0e-3 * 100.0  # dh in kJ/kg. beta in cm
@@ -158,16 +158,16 @@ class NozzleSolver(FlowSolver):
         # print('pval {}'.format(vphw[1]))
         # convert the variables into SI units
         [v, p, h, w] = [vu, pu * 1000, hu * 1000, wu ]
-        c = refProp.getSpeedSound(self.RP, hu, pu)
-        rpqs = refProp.getTD(self.RP, hu, pu)
+        c = fluidProp.getSpeedSound(self.RP, hu, pu)
+        rpqs = fluidProp.getTD(self.RP, hu, pu)
         D = rpqs['D']  # density (\rho)
         T = rpqs['T']
-        mu, k = refProp.getTransport(self.RP, T, D)  # mu is microPa*sec
+        mu, k = fluidProp.getTransport(self.RP, T, D)  # mu is microPa*sec
         muSI = mu * 1.0e-6  # mu in Pa*sec System International
         nuSI = muSI/ D # kinematic viscosity
         eps = 0.0001
-        dDdh = (refProp.getTD(self.RP, hu + eps, pu)['D'] - D) / eps / 1000.  # h in kJ/kg
-        dDdp = (refProp.getTD(self.RP, hu, pu + eps)['D'] - D) / eps / 1000.  # p in kPa
+        dDdh = (fluidProp.getTD(self.RP, hu + eps, pu)['D'] - D) / eps / 1000.  # h in kJ/kg
+        dDdp = (fluidProp.getTD(self.RP, hu, pu + eps)['D'] - D) / eps / 1000.  # p in kPa
         nozzle = self.nozzle
         Ax = nozzle.Aprofile(x) * 1.0e-4  # in m^2
         dAdxu = nozzle.dAdxNum(x)
@@ -219,16 +219,16 @@ class NozzleSolver(FlowSolver):
         [vu, pu, hu, wu] = vphw  # m/s ,kPa, kJ/kg, m/s/m = 1/sec
         # convert the variables into SI units
         [v, p, h, w] = [vu, pu * 1000, hu * 1000, wu]
-        c = refProp.getSpeedSound(self.RP, hu, pu)
-        rpqs = refProp.getTD(self.RP, hu, pu)
+        c = fluidProp.getSpeedSound(self.RP, hu, pu)
+        rpqs = fluidProp.getTD(self.RP, hu, pu)
         D = rpqs['D']  # density (\rho)
         T = rpqs['T']
-        mu, k = refProp.getTransport(self.RP, T, D)  # mu is microPa*sec
+        mu, k = fluidProp.getTransport(self.RP, T, D)  # mu is microPa*sec
         muSI = mu * 1.0e-6  # mu in Pa*sec System International
         nuSI = muSI / D  # kinematic viscosity
         eps = 0.0001
-        dDdh = (refProp.getTD(self.RP, hu + eps, pu)['D'] - D) / eps / 1000.  # h in kJ/kg
-        dDdp = (refProp.getTD(self.RP, hu, pu + eps)['D'] - D) / eps / 1000.  # p in kPa
+        dDdh = (fluidProp.getTD(self.RP, hu + eps, pu)['D'] - D) / eps / 1000.  # h in kJ/kg
+        dDdp = (fluidProp.getTD(self.RP, hu, pu + eps)['D'] - D) / eps / 1000.  # p in kPa
         nozzle = self.nozzle
         Ax = nozzle.Aprofile(x) * 1.0e-4  # in m^2
         dAdxu = nozzle.dAdxNum(x)
@@ -260,8 +260,8 @@ class NozzleSolver(FlowSolver):
         :return: - beta * vin * dv/dx| in
         """
         [v, p, h] = vph
-        c = refProp.getSpeedSound(self.RP, h, p)
-        rpqs = refProp.getTD(self.RP, h, p)
+        c = fluidProp.getSpeedSound(self.RP, h, p)
+        rpqs = fluidProp.getTD(self.RP, h, p)
         D = rpqs['D']
         T = rpqs['T']
         x0 = 0.0
@@ -269,9 +269,9 @@ class NozzleSolver(FlowSolver):
         nozzle = self.nozzle
         dAdx = (nozzle.Aprofile(x0 + eps) - nozzle.Aprofile(x0)) / eps
         dvdx = v / (math.pow(v, 2.0) / math.pow(c, 2.0) - 1.0) * dAdx / nozzle.Aprofile(x0)
-        mu, k = refProp.getTransport(self.RP, T, D)  # mu is microPa*sec
+        mu, k = fluidProp.getTransport(self.RP, T, D)  # mu is microPa*sec
         dh = 0.001
-        dTdh = (refProp.getTD(self.RP, h + dh, p)['T'] - T) / dh
+        dTdh = (fluidProp.getTD(self.RP, h + dh, p)['T'] - T) / dh
         dhdT = 1.0 / dTdh
         alpha = 3.0 / 4.0 * mu / D * 1.0e-6  # mu in mPa
         beta = k / dhdT / D / v * 1.0e-3  # dh in kJ/kg
@@ -345,10 +345,10 @@ class NozzleSolver(FlowSolver):
         elif ((self.solver == "BDFvarstep") & (self.mode != "basic")):
             # first solve it until the throat
             print('running BDF calculation')
-            rpqs = refProp.getTD(self.RP, hin, pin)
+            rpqs = fluidProp.getTD(self.RP, hin, pin)
             D = rpqs['D']  # density (\rho)
             T = rpqs['T']
-            mu, k = refProp.getTransport(self.RP, T, D)  # mu is microPa*sec
+            mu, k = fluidProp.getTransport(self.RP, T, D)  # mu is microPa*sec
             muSI = mu * 1.0e-6  # mu in Pa*sec System International
             nuSI = muSI / D  # kinematic viscosity
             print('nuSI {}'.format(nuSI) )
@@ -545,8 +545,8 @@ class NozzleSolver(FlowSolver):
                 :param vph: a vector with (velocity,pressure,enthalpy)
                 :return: the right side of the equation, mass flux, pressure term, energy term'''
         [v, p, h] = vph
-        c = refProp.getSpeedSound(RP, h, p)
-        D = refProp.getTD(RP, h, p)['D']
+        c = fluidProp.getSpeedSound(RP, h, p)
+        D = fluidProp.getTD(RP, h, p)['D']
         j = v * D
         pterm = p + D * math.pow(v, 2.0) * 1.0e-3  # kPa
         hterm = h + 0.5 * math.pow(v, 2.0) * 1.0e-3  # kJ/kg
@@ -578,7 +578,7 @@ class NozzleSolver(FlowSolver):
         vphsc = scipy.optimize.root(fun2solve, x0=np.array([0.0, vph_upstream[1] * 2.0, vph_upstream[2]]),
                                     method='hybr')
         v2, p2, h2 = vphsc.x
-        D2 = refProp.getTD(self.RP, h2, p2)['D']
+        D2 = fluidProp.getTD(self.RP, h2, p2)['D']
         print('shockwave downstream v:{}, p:{} h:{} D:{}'.format(v2, p2, h2, D2))
         return [v2, p2, h2, D2]
 
@@ -633,7 +633,7 @@ class NozzleSolver(FlowSolver):
         print("velocity {0} m/s, cross section {1} cm^2".format(vin, nozzle.Ain))
         Qin = Din * vin * nozzle.Ain / 1.e1  # in g/sec
         print("incoming mass flow {0} g/sec".format(Qin))
-        c_in = refProp.getSpeedSound(RP, hin, pin)  #
+        c_in = fluidProp.getSpeedSound(RP, hin, pin)  #
         print("speed of sound {0}".format(c_in))
 
         print("--- Nozzle throat:")
@@ -643,7 +643,7 @@ class NozzleSolver(FlowSolver):
         print("spec enthalpy {0} [J/g]".format(ht))
         Qt = Dt * vt * nozzle.At / 1.e1
         print("nozzle throat flow {0} g/sec".format(Qt))
-        props = refProp.getTD(self.RP, ht, pt)
+        props = fluidProp.getTD(self.RP, ht, pt)
         print(props)
         print("quality (vapor mass ratio) = {0}".format(props['q']))
 
@@ -723,7 +723,7 @@ class NozzleSolver(FlowSolver):
 
 
 if __name__ == '__main__':
-    from flows1d.core import EjectorGeom, numSolvers, nozzleFactory, refProp
+    from flows1d.core import EjectorGeom, numSolvers, nozzleFactory, fluidProp
 
     nozzle = nozzleFactory.ConicConic(1.0, 2.905, 0.2215, 1.4116, 0.345)
     nozzle.setFriction(1.0e-2)
@@ -734,7 +734,7 @@ if __name__ == '__main__':
     pin = 2100.0  # kPa
     Tin = 387.0  # Kelvin
     fluid = "BUTANE"
-    RP = refProp.setup(fluid)
+    RP = fluidProp.setup(fluid)
 
     vin = 3.40
     hin = 506.9
