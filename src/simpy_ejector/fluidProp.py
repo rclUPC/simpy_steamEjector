@@ -152,20 +152,21 @@ def getSpeedSound(FP, hm=100.0, P=100.0):
     if res0['c'] is not None:
         return (res0['c'])
     else:  # the media is 2 phase, calculate the quality (mass ratio first)
-        q = res0['q']  # gas mass ratio (x)
-        T = res0['T']  # temperature
-        MM = RP.WMOLdll([1.0])
-        # liquid = RP.TPFLSHdll( T,P , [1.0])
-        densMol_liquid = RP.TPRHOdll(T, P, [1.0], 1, 0, 0).D
-        densMol_vapor = RP.TPRHOdll(T, P, [1.0], 2, 0, 0).D
-        RP.TPFL2dll(T, P, [1.0])  # not good
-        therm_vap = RP.THERMdll(T, densMol_vapor, [1.0])
-        therm_liq = RP.THERMdll(T, densMol_liquid, [1.0])
-        cv = therm_vap.w  # speed of sound vapor
-        cl = therm_liq.w
-        mix = q / math.pow(densMol_vapor * MM * cv, 2.0) + (1 - q) / math.pow(densMol_liquid * MM * cl, 2.0)
-        cmix = math.sqrt(1.0 / mix / math.pow(res0['D'], 2.0))  ## speed of sound for the 2 phase mixture
-        return cmix
+        return 0
+        # q = res0['q']  # gas mass ratio (x)
+        # T = res0['T']  # temperature
+        # MM = RP.WMOLdll([1.0])
+        # # liquid = RP.TPFLSHdll( T,P , [1.0])
+        # densMol_liquid = RP.TPRHOdll(T, P, [1.0], 1, 0, 0).D
+        # densMol_vapor = RP.TPRHOdll(T, P, [1.0], 2, 0, 0).D
+        # RP.TPFL2dll(T, P, [1.0])  # not good
+        # therm_vap = RP.THERMdll(T, densMol_vapor, [1.0])
+        # therm_liq = RP.THERMdll(T, densMol_liquid, [1.0])
+        # cv = therm_vap.w  # speed of sound vapor
+        # cl = therm_liq.w
+        # mix = q / math.pow(densMol_vapor * MM * cv, 2.0) + (1 - q) / math.pow(densMol_liquid * MM * cl, 2.0)
+        # cmix = math.sqrt(1.0 / mix / math.pow(res0['D'], 2.0))  ## speed of sound for the 2 phase mixture
+        # return cmix
 
 
 ########### Functions for testing ::::
