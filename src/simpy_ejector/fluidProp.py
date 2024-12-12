@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os, numpy as np
-from ctREFPROP.ctREFPROP import REFPROPFunctionLibrary
+from pyfluids import Fluid, FluidsList, Input
 import pandas as pd
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_rows', 100)
@@ -47,98 +47,108 @@ def NBP_test():
     print('Temp(K):{0} Density {1} g/liter'.format(res.T, res.D * MM))
 
 
-def setup(material="BUTANE"):
+def setup(material="Water"):
     # print('The REFPROP directory:' + os.environ['RPPREFIX'])
-    RP = REFPROPFunctionLibrary(os.environ['RPPREFIX'])
-    RP.SETPATHdll(os.environ['RPPREFIX'])
-    # print(RP.RPVersion())
-    r = RP.SETUPdll(1, material + ".FLD", "HMX.BNC", "DEF")
-    assert r.ierr == 0, r.herr
-    return RP
+    # RP = REFPROPFunctionLibrary(os.environ['RPPREFIX'])
+    # RP.SETPATHdll(os.environ['RPPREFIX'])
+    # # print(RP.RPVersion())
+    # r = RP.SETUPdll(1, material + ".FLD", "HMX.BNC", "DEF")
+    # assert r.ierr == 0, r.herr
+    FP = Fluid(FluidsList[material])
+    return FP
 
 
-def getTD(RP, hm=100.0, P=100.0, debug=False):
+def getTD(FP, hm=100.0, P=100.0, debug=False):
     ''' get Temperature and Density from enthalpy and pressure
 
-    :param RP: Refprop pointer
-    :param hm: ethalpy in kJ/kg
+    :param FP: fluidProp pointer
+    :param hm: enthalpy in kJ/kg
     :param P: pressure in kPa
     :return: Temp K, Density in g/liter, quality, speed of sound in a dict
     '''
-    MM = RP.WMOLdll([1.0])  ## molar mass kg/kMol
-    h = hm * MM
-    res = RP.PHFLSHdll(P, h, [1.0])
+    #MM = RP.WMOLdll([1.0])  ## molar mass kg/kMol
+    #h = hm * MM
+    #res = RP.PHFLSHdll(P, h, [1.0])
+    hm *= 1000 # From kJ/kg to J/kg
+    P *= 1000 # From kPa to Pa
+    res = FP.with_state(Input.pressure(P),Input.enthalpy(hm))
     # print(res)
 
-    density = res.D * MM
-    quality = max(0.0, min(res.q, 1.0))
-    speedsound = res.w
-    specEntropy = res.s / MM  # [J/g/K] = [kJ/kg/K]
+    density = res.density
+    quality = res.quality
+    if quality == None: quality = 0
+    quality = max(0.0, min(quality, 1.0))
+    speedsound = res.sound_speed
+    specEntropy = res.entropy/1000  # [J/g/K] = [kJ/kg/K]
     if debug:
         print('Temp(K):{0}, Density {1} g/liter, quality: {2} Speed of Sound {3}'.
-              format(res.T, density, quality, speedsound))
-    # c w--speed of sound [m/s]
-    # c Cp, w are not defined for 2-phase states
-    # c in such cases, a flag = -9.99998d6 is returned
-    if speedsound < 0:
-        speedsound = None
-    return {"T": res.T, "D": density, "q": quality, "c": speedsound, "s": specEntropy}
+              format(res.temperature, density, quality, speedsound))
+    return {"T": res.temperature, "D": density, "q": quality, "c": speedsound, "s": specEntropy}
 
 
-def getDh_from_TP(RP, T, p):
+def getDh_from_TP(FP, T, p):
     ''' get Density and specific enthalpy [kJ/kg] from Temperature and pressure
     :param T: temperature in Kelvin
     :param p: pressure in kPa!
     :return : [Density in kg/m^3, spec enthalpy in kJ/kg]
     '''
-    inprops = RP.TPFLSHdll(T, p, [1.0])
-    MM = RP.WMOLdll([1.0])
-    hin = inprops.h / MM
-    Din = inprops.D * MM
+    T -= 273.15
+    p *= 1000
+    #inprops = RP.TPFLSHdll(T, p, [1.0])
+    inprops = FP.with_state(Input.temperature(T),Input.pressure(p))
+    #MM = RP.WMOLdll([1.0])
+    hin = inprops.enthalpy/1000
+    Din = inprops.density
     return [Din, hin]
 
-def get_from_PS(RP, p , s):
-    """Get quantities from pressure and specific etropy
+def get_from_PS(FP, p , s):
+    """Get quantities from pressure and specific entropy
 
     :param RP:
     :param p: pressure in [kPa]
     :param s: specific entropy [kJ/kg/K]
     :return: dict with "T" : Temp [K], "D": density [kg/m^3] , "h" : spec enthalpy [kJ/kg]
     """
-    MM = RP.WMOLdll([1.0])  ## molar mass kg/kMol
-    smol = s * MM # [[J/mol-K]
-    res = RP.PSFLSHdll(p, smol, [1.0])
-    density = res.D * MM
-    hmass = res.h / MM
+    #MM = RP.WMOLdll([1.0])  ## molar mass kg/kMol
+    #smol = s * MM # [[J/mol-K]
+    #res = RP.PSFLSHdll(p, smol, [1.0])
+    p *= 1000
+    res = FP.with_state(Input.pressure(p),Input.entropy(s))
+    density = res.density
+    hmass = res.enthalpy/1000
     #print(' h = {}'.format(res.h))
-    return {"T": res.T, "D": density, "h": hmass }
+    return {"T": res.temperature+273.15, "D": density, "h": hmass }
 
-def getTransport(RP, T,D):
+def getTransport(FP, T,D):
     """ get transport properties, viscosity and thermal conductivity
 
-    :param RP:
+    :param FP:
     :param T: Temperature (K)
-    :param D: density g/l
+    :param D: density kg/m^3
     :return: eta - dynamical viscosity(uPa.s) <br />
            tcx - thermal conductivity(W / m.K)
     """
-    MM = RP.WMOLdll([1.0])  ## molar mass kg/kMol
-    Dmol = D / MM # molar density
-    eta, tcx, ierr, herr = RP.TRNPRPdll(T,Dmol,[1.0])
+    #MM = RP.WMOLdll([1.0])  ## molar mass kg/kMol
+    #Dmol = D / MM # molar density
+    T -= 273.15
+    res = FP.with_state(Input.temperature(T),Input.density(D))
+    eta = res.dynamic_viscosity * 1e6 # From Pa.s to uPa.s
+    tcx = res.conductivity
+    # eta, tcx, ierr, herr = RP.TRNPRPdll(T,Dmol,[1.0])
     # eta - -viscosity(uPa.s)
     # tcx - -thermal conductivity(W / m.K)
     return eta, tcx
 
 
-def getSpeedSound(RP, hm=100.0, P=100.0):
+def getSpeedSound(FP, hm=100.0, P=100.0):
     ''' | get Speed of Sound  from enthalpy and pressure.
     | If the medium is 2 phase, the speed of sound is calculated with the Homogeneus Equilibrium Model
     | \\frac{1}{\rho^2c^2}=\frac{1-x}{\rho_l^2c_l^2}+\frac{x}{\rho_g^2c_g^2}
     :param RP: Refprop pointer
-    :param hm: ethalpy in kJ/kg
+    :param hm: enthalpy in kJ/kg
     :param P: pressure in kPa
     '''
-    res0 = getTD(RP, hm, P)
+    res0 = getTD(FP, hm, P)
     if res0['c'] is not None:
         return (res0['c'])
     else:  # the media is 2 phase, calculate the quality (mass ratio first)

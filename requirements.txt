@@ -1,4 +1,4 @@
-ctREFPROP
+pyfluids
 numpy
 pandas
 matplotlib
