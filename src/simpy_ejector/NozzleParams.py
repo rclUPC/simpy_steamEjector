@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class NozzleParams(object):
-    """The class cotaining the Nozzle geometric parameters, and shape
+    """The class containing the Nozzle geometric parameters, and shape
         """
 
     def __init__(self, Ain, At, Ao, L, xt, Aprofile = None, Rprofile = None):
