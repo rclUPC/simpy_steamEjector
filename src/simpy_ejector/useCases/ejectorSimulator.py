@@ -41,7 +41,7 @@ class ejectorSimu:
     def __init__(self, params, fluid = "R1233zde" ):
         """ ejector simulator object
 
-        :param fluid: fluid name from refprop see https://pages.nist.gov/REFPROP-docs/#list-of-fluids
+        :param fluid: fluid name from fluidProp see https://pages.nist.gov/fluidProp-docs/#list-of-fluids
         :param params: a dictionary with fields <br>
          "Rin": primary nozzle inlet radius in [cm] ( example 1.1) <br>
          "Rt": primary nozzle throat radius in [cm] ( example 0.29) <br>
@@ -119,15 +119,15 @@ class ejectorSimu:
         # self.nsolver = nozzleSolver.NozzleSolver(nozzle, self.fluid, 1, solver="AdamAdaptive", mode="basic")
         # self.nsolver.setFriction(1e-2)
 
-        RP = refProp.setup(self.fluid)
-        [Din, hin] = refProp.getDh_from_TP(RP, self.params['Tprim'], self.params['Pprim'])
+        RP = fluidProp.setup(self.fluid)
+        [Din, hin] = fluidProp.getDh_from_TP(RP, self.params['Tprim'], self.params['Pprim'])
 
         vin_crit = self.nsolver.calcCriticalSpeed( self.params['Pprim'], hin, 0.1, maxdev=1e-3, chokePos="divergent_part")
 
         nozzle_crit0 = self.nsolver.solveNplot(vin_crit, self.params['Pprim'], hin, doPlot=False)
 
         logging.info(f"calculated critical choking inlet speed = {round(vin_crit, 5)} m/s")
-        mass_flow_crit = vin_crit * refProp.getTD(self.nsolver.RP, hin, self.params['Pprim'])['D'] * self.nsolver.nozzle.Aprofile(0) * 1e-4
+        mass_flow_crit = vin_crit * fluidProp.getTD(self.nsolver.RP, hin, self.params['Pprim'])['D'] * self.nsolver.nozzle.Aprofile(0) * 1e-4
         logging.info(f"critical mass flow is {round(mass_flow_crit, 5)} kg/sec")
         #results = params
         self.params["vin_crit"] = vin_crit
@@ -202,8 +202,8 @@ class ejectorSimu:
         # solve the initial value ODE:
         self.solMix = self.mixer.solveMix(mixerinput)
         self.diffout = self.solMix.iloc[-1] # diffuser output
-        out_prim = refProp.getTD(self.RP, hm=self.diffout["hp"], P=self.diffout["p"])
-        out_sec = refProp.getTD(self.RP, hm=self.diffout["hs"], P=self.diffout["p"])
+        out_prim = fluidProp.getTD(self.FP, hm=self.diffout["hp"], P=self.diffout["p"])
+        out_sec = fluidProp.getTD(self.FP, hm=self.diffout["hs"], P=self.diffout["p"])
         massFlowPrim = self.diffout["vp"] * self.diffout["Ap"] * out_prim['D'] * 1e-4
         massFlowSec =  self.diffout["vs"] * self.diffout["As"] * out_sec['D'] * 1e-4
         quality_tot =  (massFlowPrim * out_prim['q'] +  massFlowSec * out_sec['q'] ) / (massFlowPrim + massFlowSec)
@@ -218,12 +218,12 @@ class ejectorSimu:
         solMix = the flow solution in the mixer and the diffuser part of the ejector
         """
         solMix = self.solMix
-        Dp = solMix.apply(lambda x: refProp.getTD(self.RP, hm=x['hp'], P=x['p'])['D'], axis=1)  # density primary flow
-        qp = solMix.apply(lambda x: refProp.getTD(self.RP, hm=x['hp'], P=x['p'])['q'], axis=1) # vapor quality
+        Dp = solMix.apply(lambda x: fluidProp.getTD(self.FP, hm=x['hp'], P=x['p'])['D'], axis=1)  # density primary flow
+        qp = solMix.apply(lambda x: fluidProp.getTD(self.FP, hm=x['hp'], P=x['p'])['q'], axis=1) # vapor quality
         solMix["MFRp"] = Dp * solMix['vp'] * solMix['Ap']*1e-4 # primary mass flow rate
         solMix["qp"] = qp
-        Ds = solMix.apply(lambda x: refProp.getTD(self.RP, hm=x['hs'], P=x['p'])['D'],  axis = 1) # density primary flow
-        qs = solMix.apply(lambda x: refProp.getTD(self.RP, hm=x['hs'], P=x['p'])['q'], axis=1)
+        Ds = solMix.apply(lambda x: fluidProp.getTD(self.FP, hm=x['hs'], P=x['p'])['D'],  axis = 1) # density primary flow
+        qs = solMix.apply(lambda x: fluidProp.getTD(self.FP, hm=x['hs'], P=x['p'])['q'], axis=1)
         solMix["MFRs"] = Ds * solMix['vs'] * solMix['As']*1e-4
         solMix["qs"] = qs
         logging.info(f"mixer first sec density {Ds.head(1)}")
@@ -263,8 +263,8 @@ class ejectorSimu:
         ## Mach numbers : ################
         #plt.subplot(413)
         ax[2].plot(solNozzle['x'], solNozzle['mach'])
-        cPrim = [refProp.getSpeedSound(self.RP, solMix.iloc[i]['hp'], solMix.iloc[i]['p']) for i in range(solMix.__len__())]
-        cSec = [refProp.getSpeedSound(self.RP, solMix.iloc[i]['hs'], solMix.iloc[i]['p']) for i in
+        cPrim = [fluidProp.getSpeedSound(self.FP, solMix.iloc[i]['hp'], solMix.iloc[i]['p']) for i in range(solMix.__len__())]
+        cSec = [fluidProp.getSpeedSound(self.FP, solMix.iloc[i]['hs'], solMix.iloc[i]['p']) for i in
                 range(solMix.__len__())]
         ax[2].plot(solMix['x'], solMix['vp'] / cPrim )
         ax[2].plot(solMix['x'], solMix['vs'] / cSec)

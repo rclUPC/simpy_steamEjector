@@ -20,7 +20,7 @@ import scipy.integrate
 import numpy as np
 import pandas as pd
 import math
-from simpy_ejector import numSolvers, refProp
+from simpy_ejector import numSolvers, fluidProp
 import logging
 
 class FlowSolver(object):
@@ -29,7 +29,7 @@ class FlowSolver(object):
         """ general object for 1D fluid flow simulations
         containing function for normal shock wave solutions"""
         self.fluid = fluid
-        self.RP = refProp.setup(fluid)
+        self.RP = fluidProp.setup(fluid)
 
     def setFriction(self, friction):
         """| set the friciton coefficient that is the friction of the flow with the wall """
@@ -67,8 +67,8 @@ class FlowSolver(object):
                 :param vph: a vector with (velocity,pressure,enthalpy)
                 :return: the right side of the equation, mass flux, pressure term, energy term'''
         [v, p, h] = vph
-        c = refProp.getSpeedSound(self.RP, h, p)
-        D = refProp.getTD(self.RP, h, p)['D']
+        c = fluidProp.getSpeedSound(self.RP, h, p)
+        D = fluidProp.getTD(self.RP, h, p)['D']
         j = v * D
         pterm = p + D * math.pow(v, 2.0) * 1.0e-3  # kPa
         hterm = h + 0.5 * math.pow(v, 2.0) * 1.0e-3  # kJ/kg
@@ -87,7 +87,7 @@ class FlowSolver(object):
         vphsc = scipy.optimize.root(fun2solve, x0=np.array([0.0, vph_upstream[1] * 2.0, vph_upstream[2]]),
                                     method='hybr')
         v2, p2, h2 = vphsc.x
-        D2 = refProp.getTD(self.RP, h2, p2)['D']
+        D2 = fluidProp.getTD(self.RP, h2, p2)['D']
         return np.array([v2, p2, h2, D2])
 
 
@@ -101,8 +101,8 @@ class FlowSolver(object):
         :return: [dv/dx, dp/dx, dh/dx] 3 dim numpy array
         '''
         [v, p, h] = vph
-        c = refProp.getSpeedSound(self.RP, h, p)
-        D = refProp.getTD(self.RP, h, p)['D']
+        c = fluidProp.getSpeedSound(self.RP, h, p)
+        D = fluidProp.getTD(self.RP, h, p)['D']
         eps = 0.0001
         dAdx = self.dAdx(x)
         dvdx = v / (math.pow(v, 2.0) / math.pow(c, 2.0) - 1.0) * dAdx / self.AFun(x)
@@ -123,11 +123,11 @@ class FlowSolver(object):
         :return: [dv/dx, dp/dx, dh/dx] 3 dim numpy array
         '''
         [v, p, h] = vph
-        c = refProp.getSpeedSound(self.RP, h, p)
-        D = refProp.getTD(self.RP, h, p)['D']
+        c = fluidProp.getSpeedSound(self.RP, h, p)
+        D = fluidProp.getTD(self.RP, h, p)['D']
         eps = 0.001
-        dDdh = (refProp.getTD(self.RP, h + eps, p)['D'] - D) / eps / 1000.  # h in kJ/kg
-        dDdp = (refProp.getTD(self.RP, h, p + eps)['D'] - D) / eps / 1000.  # p in kPa
+        dDdh = (fluidProp.getTD(self.RP, h + eps, p)['D'] - D) / eps / 1000.  # h in kJ/kg
+        dDdp = (fluidProp.getTD(self.RP, h, p + eps)['D'] - D) / eps / 1000.  # p in kPa
         dAdx = self.dAdx(x)
         left1 = - dAdx / self.AFun(x)
         if hasattr(self, 'frictionCoef'):
@@ -176,7 +176,7 @@ class FlowSolver(object):
         # print("dvdp = {}".format(dvp))
         # Dx = 0.01
         # dr1 = Dx * ( dDdp * dpdx * 1e3 + dDdh * dhdx * 1e3)
-        # dr2 = (refProp.getTD(self.RP, h + dhdx* Dx, p + dpdx * Dx)['D'] - D)
+        # dr2 = (fluidProp.getTD(self.RP, h + dhdx* Dx, p + dpdx * Dx)['D'] - D)
         # print("density changes : {} vs {}".format(dr1, dr2))
         return out
 
@@ -200,7 +200,7 @@ class FlowSolver(object):
             frictionCoefficient = 0.0
         xnew = xlast + deltaX
         massflow = constants['massflow'] # in kg/sec
-        Dnew = refProp.getTD(self.RP, hn, pn)['D']
+        Dnew = fluidProp.getTD(self.RP, hn, pn)['D']
         eq1 = vn - constants['massflow']/ self.AFun(xnew) / 1e-4 / Dnew
         # deltaX / 100. because deltaX is measured in cm, and the equation is in SI
         eq2 = constants['massflow']/ self.AFun(xnew) / 1e-4 * (vn-vl) + (pn-pl) * 1e3 + \
@@ -267,7 +267,7 @@ class FlowSolver(object):
         """
         v0 = [vin, pin, hin]
         # updaterFunction(lastY, xlast, dX, params)
-        Din =  refProp.getTD(self.RP, hin, pin)['D']
+        Din =  fluidProp.getTD(self.RP, hin, pin)['D']
         massflow = vin * self.AFun(x0) * 1e-4 * Din
         params = {'massflow': massflow}
         print(params)
@@ -277,10 +277,10 @@ class FlowSolver(object):
                                            initY = v0, stepCorrection = FlowSolver.stepCorrection,
                                            stopCondition = stopCondition)
         # print(sol)
-        densfunc = lambda row: refProp.getTD(self.RP, hm=row[3], P=row[2])['D']
+        densfunc = lambda row: fluidProp.getTD(self.RP, hm=row[3], P=row[2])['D']
         ## speed of sound from the HEM model:
-        cfunc = lambda row: refProp.getSpeedSound(self.RP, hm=row[3], P=row[2])
-        qfunc = lambda row: refProp.getTD(self.RP, hm=row[3], P=row[2])['q']
+        cfunc = lambda row: fluidProp.getSpeedSound(self.RP, hm=row[3], P=row[2])
+        qfunc = lambda row: fluidProp.getTD(self.RP, hm=row[3], P=row[2])['q']
         density = np.apply_along_axis(densfunc, 1, sol)
         speed_sound = np.apply_along_axis(cfunc, 1, sol)
         quality = np.apply_along_axis(qfunc, 1, sol)
@@ -316,10 +316,10 @@ class FlowSolver(object):
             vBDF = scipy.integrate.solve_ivp(funrev, [startx, endx], v0, method='BDF')
             sol = np.hstack((vBDF.t.reshape((-1, 1)), vBDF.y.transpose()))
                                              # events=[negPress, negEnthalpy], atol=self.extraParams['atol'])
-        densfunc = lambda row: refProp.getTD(self.RP, hm=row[3], P=row[2])['D']
+        densfunc = lambda row: fluidProp.getTD(self.RP, hm=row[3], P=row[2])['D']
         ## speed of sound from the HEM model:
-        cfunc = lambda row: refProp.getSpeedSound(self.RP, hm=row[3], P=row[2])
-        qfunc = lambda row: refProp.getTD(self.RP, hm=row[3], P=row[2])['q']
+        cfunc = lambda row: fluidProp.getSpeedSound(self.RP, hm=row[3], P=row[2])
+        qfunc = lambda row: fluidProp.getTD(self.RP, hm=row[3], P=row[2])['q']
         density = np.apply_along_axis(densfunc, 1, sol)
         speed_sound = np.apply_along_axis(cfunc, 1, sol)
         quality = np.apply_along_axis(qfunc, 1, sol)
@@ -332,9 +332,9 @@ class FlowSolver(object):
         :param xvph: a 2d numpy array with columns : x-location, velocity, pressure, enthalpy
         :return: pandas dataframe
         '''
-        densfunc = lambda row: refProp.getTD(self.RP, hm=row[3], P=row[2])['D']
-        cfunc = lambda row: refProp.getSpeedSound(self.RP, hm=row[3], P=row[2])
-        qfunc = lambda row: refProp.getTD(self.RP, hm=row[3], P=row[2])['q']
+        densfunc = lambda row: fluidProp.getTD(self.RP, hm=row[3], P=row[2])['D']
+        cfunc = lambda row: fluidProp.getSpeedSound(self.RP, hm=row[3], P=row[2])
+        qfunc = lambda row: fluidProp.getTD(self.RP, hm=row[3], P=row[2])['q']
         density = np.apply_along_axis(densfunc, 1, xvph)
         speed_sound = np.apply_along_axis(cfunc, 1, xvph)
         quality = np.apply_along_axis(qfunc, 1, xvph)
@@ -352,7 +352,7 @@ class FlowSolver(object):
         :param h: spec enthalpy in kJ/kg
         :return : dp pressure difference in kPa
         """
-        diffMF = lambda dpr : refProp.getTD(self.RP, h, p + dpr)['D']*(v+dv) - refProp.getTD(self.RP, h, p)['D'] * v
+        diffMF = lambda dpr : fluidProp.getTD(self.RP, h, p + dpr)['D']*(v+dv) - fluidProp.getTD(self.RP, h, p)['D'] * v
         sol_dp = scipy.optimize.fsolve(diffMF, x0 = 0)[0]
         return sol_dp
 

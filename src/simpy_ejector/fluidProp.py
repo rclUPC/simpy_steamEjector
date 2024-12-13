@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os, numpy as np
-from pyfluids import Fluid, FluidsList, Input
+from pyfluids import Fluid, FluidsList, Input, Phases
 import pandas as pd
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_rows', 100)
@@ -82,8 +82,8 @@ def getTD(FP, hm=100.0, P=100.0, debug=False):
     specEntropy = res.entropy/1000  # [J/g/K] = [kJ/kg/K]
     if debug:
         print('Temp(K):{0}, Density {1} g/liter, quality: {2} Speed of Sound {3}'.
-              format(res.temperature, density, quality, speedsound))
-    return {"T": res.temperature, "D": density, "q": quality, "c": speedsound, "s": specEntropy}
+              format(res.temperature + 273.15, density, quality, speedsound))
+    return {"T": res.temperature + 273.15, "D": density, "q": quality, "c": speedsound, "s": specEntropy}
 
 
 def getDh_from_TP(FP, T, p):
@@ -95,6 +95,7 @@ def getDh_from_TP(FP, T, p):
     T -= 273.15
     p *= 1000
     #inprops = RP.TPFLSHdll(T, p, [1.0])
+    FP.specify_phase(Phases.Gas)
     inprops = FP.with_state(Input.temperature(T),Input.pressure(p))
     #MM = RP.WMOLdll([1.0])
     hin = inprops.enthalpy/1000
