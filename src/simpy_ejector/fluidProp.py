@@ -58,7 +58,7 @@ def setup(material="Water"):
     return FP
 
 
-def getTD(FP, hm=100.0, P=100.0, debug=False):
+def getTD(FP, hm=100.0, P=100.0, debug=False, phase = Phases.NotImposed):
     ''' get Temperature and Density from enthalpy and pressure
 
     :param FP: fluidProp pointer
@@ -71,6 +71,7 @@ def getTD(FP, hm=100.0, P=100.0, debug=False):
     #res = RP.PHFLSHdll(P, h, [1.0])
     hm *= 1000 # From kJ/kg to J/kg
     P *= 1000 # From kPa to Pa
+    FP.specify_phase(phase)
     res = FP.with_state(Input.pressure(P),Input.enthalpy(hm))
     # print(res)
 
@@ -95,7 +96,7 @@ def getDh_from_TP(FP, T, p):
     T -= 273.15
     p *= 1000
     #inprops = RP.TPFLSHdll(T, p, [1.0])
-    FP.specify_phase(Phases.Gas)
+    #FP.specify_phase(Phases.Gas)
     inprops = FP.with_state(Input.temperature(T),Input.pressure(p))
     #MM = RP.WMOLdll([1.0])
     hin = inprops.enthalpy/1000

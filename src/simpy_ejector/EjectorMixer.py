@@ -27,6 +27,7 @@ import logging
 import scipy.optimize
 from simpy_ejector import EjectorGeom, numSolvers, fluidProp
 from simpy_ejector.flowSolver import FlowSolver
+from pyfluids import Phases
 
 class EjectorMixer(FlowSolver) :
 
@@ -184,7 +185,7 @@ class EjectorMixer(FlowSolver) :
         Asy = pars['Am'] - Apy # [cm^2] the cross section of the secondary flow
         massp = pars['massFlowPrim'] - Dpy * vpy * Apy / 10.0  # [ g/s] Apy in cm^2
         enp = pars['ho'] + math.pow(pars['vo'], 2.0) / 2.0 * 1e-3 - hpy - math.pow(vpy, 2.0) / 2.0 * 1e-3  # kJ/kg enthalpy primary
-        dp = Dpy - fluidProp.getTD(RP, hpy, py)['D'] # density primary at Y
+        dp = Dpy - fluidProp.getTD(RP, hpy, py, Phases.Liquid)['D'] # density primary at Y
         Sp = pars['so'] - fluidProp.getTD(RP, hpy, py)['s'] #  [kJ/kg/K] entropy primary
         masssec = massFlowSecond - Dsy * vsy * Asy / 10.0  # this line is in [ g/s], Asy is in cm^2
         if False: # self.momCalcType == 0: # neglect the secondary inlet speed
